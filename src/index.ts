@@ -13,6 +13,15 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Tailor backend is running',
+    health: '/api/health',
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
@@ -48,3 +57,4 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 export default app;
+module.exports = app;
