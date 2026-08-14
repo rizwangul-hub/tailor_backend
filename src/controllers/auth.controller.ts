@@ -33,6 +33,30 @@ export const activateLicense = async (req: Request, res: Response): Promise<void
       return;
     }
 
+    // First-time activation logic
+    if (license.status === 'AVAILABLE') {
+      license.status = 'ACTIVE';
+      license.activatedAt = new Date();
+
+      if (license.plan === 'daily') {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
+        license.expiresAt = d;
+      } else if (license.plan === 'weekly') {
+        const d = new Date();
+        d.setDate(d.getDate() + 7);
+        license.expiresAt = d;
+      } else if (license.plan === 'monthly') {
+        const d = new Date();
+        d.setMonth(d.getMonth() + 1);
+        license.expiresAt = d;
+      } else if (license.plan === 'yearly') {
+        const d = new Date();
+        d.setFullYear(d.getFullYear() + 1);
+        license.expiresAt = d;
+      }
+    }
+
     // Check if active on another device
     if (license.activeDeviceId && license.activeDeviceId !== cleanDeviceId) {
       if (!confirmTransfer) {
@@ -48,7 +72,7 @@ export const activateLicense = async (req: Request, res: Response): Promise<void
       // Confirm device transfer -> revoke old device & assign new device
       license.activeDeviceId = cleanDeviceId;
       license.activeDeviceName = deviceName || 'New Mobile Device';
-      license.activatedAt = new Date();
+      // Do NOT overwrite activatedAt here, just transfer the device.
       await license.save();
 
       res.status(200).json({
