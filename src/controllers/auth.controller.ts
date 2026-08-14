@@ -61,6 +61,7 @@ export const activateLicense = async (req: Request, res: Response): Promise<void
         shopName: license.shopName,
         mobile: license.mobile,
         address: license.address,
+        expiresAt: license.expiresAt,
       });
       return;
     }
@@ -80,6 +81,7 @@ export const activateLicense = async (req: Request, res: Response): Promise<void
       shopName: license.shopName,
       mobile: license.mobile,
       address: license.address,
+      expiresAt: license.expiresAt,
     });
   } catch (error) {
     console.error('[Auth Controller] Error:', error);
@@ -103,6 +105,15 @@ export const verifySession = async (req: Request, res: Response): Promise<void> 
         success: false,
         isRevoked: true,
         message: 'This license is active on another device.',
+      });
+      return;
+    }
+
+    if (license.expiresAt && license.expiresAt < new Date()) {
+      res.status(403).json({
+        success: false,
+        isExpired: true,
+        message: 'This license has expired.',
       });
       return;
     }

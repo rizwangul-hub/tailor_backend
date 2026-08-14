@@ -8,10 +8,13 @@ import {
   SyncOperationLogModel,
 } from '../models/CloudEntity.model';
 
-const verifyDeviceSession = async (tenantId: string, deviceId: string): Promise<boolean> => {
+const verifyDeviceSession = async (tenantId: string, deviceId: string): Promise<{ valid: boolean, isExpired: boolean }> => {
   const license = await LicenseModel.findOne({ tenantId });
-  if (!license) return true; // If offline/dev mode without DB record yet
-  return license.activeDeviceId === deviceId;
+  if (!license) return { valid: true, isExpired: false };
+  if (license.expiresAt && license.expiresAt < new Date()) {
+    return { valid: false, isExpired: true };
+  }
+  return { valid: license.activeDeviceId === deviceId, isExpired: false };
 };
 
 export const pushSync = async (req: Request, res: Response): Promise<void> => {
@@ -23,8 +26,12 @@ export const pushSync = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const isValidSession = await verifyDeviceSession(tenantId, deviceId);
-    if (!isValidSession) {
+    const { valid, isExpired } = await verifyDeviceSession(tenantId, deviceId);
+    if (isExpired) {
+      res.status(403).json({ success: false, isExpired: true, message: 'This license has expired.' });
+      return;
+    }
+    if (!valid) {
       res.status(403).json({ success: false, isRevoked: true, message: 'This license is active on another device.' });
       return;
     }
@@ -150,8 +157,12 @@ export const pullSync = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const isValidSession = await verifyDeviceSession(tenantId, deviceId);
-    if (!isValidSession) {
+    const { valid, isExpired } = await verifyDeviceSession(tenantId, deviceId);
+    if (isExpired) {
+      res.status(403).json({ success: false, isExpired: true, message: 'This license has expired.' });
+      return;
+    }
+    if (!valid) {
       res.status(403).json({ success: false, isRevoked: true, message: 'This license is active on another device.' });
       return;
     }
@@ -187,8 +198,12 @@ export const restoreTenantData = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const isValidSession = await verifyDeviceSession(tenantId, deviceId);
-    if (!isValidSession) {
+    const { valid, isExpired } = await verifyDeviceSession(tenantId, deviceId);
+    if (isExpired) {
+      res.status(403).json({ success: false, isExpired: true, message: 'This license has expired.' });
+      return;
+    }
+    if (!valid) {
       res.status(403).json({ success: false, isRevoked: true, message: 'This license is active on another device.' });
       return;
     }
