@@ -36,13 +36,15 @@ export const getDashboardStats = async (req: AdminRequest, res: Response): Promi
     const active = await LicenseModel.countDocuments({ status: 'ACTIVE' });
     const expired = await LicenseModel.countDocuments({ status: 'EXPIRED' });
     const blocked = await LicenseModel.countDocuments({ status: 'BLOCKED' });
+    const daily = await LicenseModel.countDocuments({ plan: 'daily' });
+    const weekly = await LicenseModel.countDocuments({ plan: 'weekly' });
     const monthly = await LicenseModel.countDocuments({ plan: 'monthly' });
     const yearly = await LicenseModel.countDocuments({ plan: 'yearly' });
     const lifetime = await LicenseModel.countDocuments({ plan: 'lifetime' });
 
     res.json({
       success: true,
-      data: { total, active, expired, blocked, subscriptions: { monthly, yearly, lifetime } }
+      data: { total, active, expired, blocked, subscriptions: { daily, weekly, monthly, yearly, lifetime } }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error' });
@@ -164,6 +166,14 @@ export const changePlan = async (req: AdminRequest, res: Response): Promise<void
     if (license.activatedAt) {
       if (plan === 'lifetime') {
         license.expiresAt = undefined;
+      } else if (plan === 'daily') {
+        const d = new Date(license.activatedAt);
+        d.setDate(d.getDate() + 1);
+        license.expiresAt = d;
+      } else if (plan === 'weekly') {
+        const d = new Date(license.activatedAt);
+        d.setDate(d.getDate() + 7);
+        license.expiresAt = d;
       } else if (plan === 'monthly') {
         const d = new Date(license.activatedAt);
         d.setMonth(d.getMonth() + 1);
