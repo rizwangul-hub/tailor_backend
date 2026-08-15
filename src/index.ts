@@ -33,6 +33,14 @@ const limiter = rateLimit({
   message: { success: false, message: 'Too many requests' }
 });
 
+// Connect DB middleware for Vercel serverless
+app.use(async (req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    await connectDB();
+  }
+  next();
+});
+
 // Apply rate limiter to auth, sync, and admin API
 app.use('/api/auth', limiter);
 app.use('/api/sync', limiter);
@@ -44,16 +52,13 @@ app.post('/api/upload', upload.single('image'), uploadImage);
 // API Routes
 app.use('/api', apiRoutes);
 
-// Connect DB & Start Server
+// Connect DB & Start Server (Local Development)
 if (process.env.NODE_ENV !== 'production') {
   connectDB().then(() => {
     app.listen(PORT, () => {
       console.log(`[Backend] Server running on port ${PORT}`);
     });
   });
-} else {
-  // In production (Vercel), we just connect DB and export the app
-  connectDB();
 }
 
 export default app;
