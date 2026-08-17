@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ILicense extends Document {
   licenseKey: string;
+  password?: string;
   tenantId: string;
   plan: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'lifetime';
   status: 'AVAILABLE' | 'ACTIVE' | 'EXPIRED' | 'BLOCKED' | 'REVOKED';
@@ -22,6 +23,7 @@ export interface ILicense extends Document {
 const LicenseSchema = new Schema<ILicense>(
   {
     licenseKey: { type: String, required: true, unique: true, index: true },
+    password: { type: String },
     tenantId: { type: String, required: true, index: true },
     plan: { type: String, enum: ['daily', 'weekly', 'monthly', 'yearly', 'lifetime'], default: 'monthly' },
     status: { type: String, enum: ['AVAILABLE', 'ACTIVE', 'EXPIRED', 'BLOCKED', 'REVOKED'], default: 'AVAILABLE' },

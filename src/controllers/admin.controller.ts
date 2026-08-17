@@ -62,7 +62,7 @@ export const getLicenses = async (req: AdminRequest, res: Response): Promise<voi
 
 export const createLicense = async (req: AdminRequest, res: Response): Promise<void> => {
   try {
-    const { plan, price, tenantId, tailorName, shopName, mobile, address, email } = req.body;
+    const { plan, price, tenantId, tailorName, shopName, mobile, address, email, password } = req.body;
     
     // Generate code TLR-ABCD-EFGH-IJKL
     const genSegment = () => crypto.randomBytes(2).toString('hex').toUpperCase();
@@ -71,6 +71,7 @@ export const createLicense = async (req: AdminRequest, res: Response): Promise<v
 
     const license = await LicenseModel.create({
       licenseKey,
+      password: password || '1234', // fallback if empty
       tenantId: cleanTenantId,
       plan: plan || 'monthly',
       price: price || 0,
