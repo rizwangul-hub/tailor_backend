@@ -142,8 +142,20 @@ export const extendLicense = async (req: AdminRequest, res: Response): Promise<v
 
     if (license.expiresAt) {
       const newExpiry = new Date(license.expiresAt);
-      newExpiry.setMonth(newExpiry.getMonth() + (months || 1));
-      license.expiresAt = newExpiry;
+      // If it's already expired, extend from today instead of from the past expiry
+      if (newExpiry < new Date()) {
+        const d = new Date();
+        d.setMonth(d.getMonth() + (months || 1));
+        license.expiresAt = d;
+      } else {
+        newExpiry.setMonth(newExpiry.getMonth() + (months || 1));
+        license.expiresAt = newExpiry;
+      }
+      
+      if (license.status === 'EXPIRED') {
+        license.status = 'ACTIVE';
+      }
+
       await license.save();
       await logAdminAction(req.admin?.id!, 'LICENSE_EXTENDED', license.id, { months });
       res.json({ success: true, data: license });
@@ -164,24 +176,30 @@ export const changePlan = async (req: AdminRequest, res: Response): Promise<void
     license.plan = plan;
     // reset expiry based on new plan if it's already active
     if (license.activatedAt) {
+      const baseDate = new Date(); // Start new plan from today
+      
       if (plan === 'lifetime') {
         license.expiresAt = undefined;
       } else if (plan === 'daily') {
-        const d = new Date(license.activatedAt);
+        const d = new Date(baseDate);
         d.setDate(d.getDate() + 1);
         license.expiresAt = d;
       } else if (plan === 'weekly') {
-        const d = new Date(license.activatedAt);
+        const d = new Date(baseDate);
         d.setDate(d.getDate() + 7);
         license.expiresAt = d;
       } else if (plan === 'monthly') {
-        const d = new Date(license.activatedAt);
+        const d = new Date(baseDate);
         d.setMonth(d.getMonth() + 1);
         license.expiresAt = d;
       } else if (plan === 'yearly') {
-        const d = new Date(license.activatedAt);
+        const d = new Date(baseDate);
         d.setFullYear(d.getFullYear() + 1);
         license.expiresAt = d;
+      }
+
+      if (license.status === 'EXPIRED') {
+        license.status = 'ACTIVE';
       }
     }
     

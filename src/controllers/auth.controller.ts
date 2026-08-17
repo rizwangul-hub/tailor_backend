@@ -33,8 +33,19 @@ export const activateLicense = async (req: Request, res: Response): Promise<void
       return;
     }
 
+    // Check if the license is expired
+    if (license.expiresAt && license.expiresAt < new Date()) {
+      license.status = 'EXPIRED';
+      await license.save();
+      res.status(403).json({
+        success: false,
+        message: 'Your plan has expired. Please contact the administrator to renew your license.',
+      });
+      return;
+    }
+
     // First-time activation logic
-    if (license.status === 'AVAILABLE') {
+    if (license.status === 'AVAILABLE' || license.status === 'EXPIRED') {
       license.status = 'ACTIVE';
       license.activatedAt = new Date();
 
@@ -134,6 +145,8 @@ export const verifySession = async (req: Request, res: Response): Promise<void> 
     }
 
     if (license.expiresAt && license.expiresAt < new Date()) {
+      license.status = 'EXPIRED';
+      await license.save();
       res.status(403).json({
         success: false,
         isExpired: true,
@@ -146,5 +159,25 @@ export const verifySession = async (req: Request, res: Response): Promise<void> 
   } catch (error) {
     console.error('[VerifySession Controller] Error:', error);
     res.status(500).json({ success: false, message: 'Internal server error.' });
+  }
+};
+
+export const logout = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { tenantId, deviceId } = req.body;
+    if (!tenantId || !deviceId) {
+      res.status(400).json({ success: false, message: 'Missing fields' });
+      return;
+    }
+    
+    const license = await LicenseModel.findOne({ tenantId, activeDeviceId: deviceId });
+    if (license) {
+      license.activeDeviceId = null;
+      license.activeDeviceName = null;
+      await license.save();
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false });
   }
 };
